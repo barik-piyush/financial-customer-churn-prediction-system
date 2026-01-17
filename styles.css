@@ -162,7 +162,7 @@ header .navbar {
 
 .main-section  .section-details .start:hover {
     color: black;
-    background-color:rgb(57, 156, 24);
+    background-color:rgba(232, 237, 230, 0.768);
     border-color: black;
     
 }
