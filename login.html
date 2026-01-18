@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FCCPS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #001845, #023E7D);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            color: #023E7D;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #5C677D;
+            text-align: left;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #979DAC;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+            border-color: #0466C8;
+            outline: none;
+        }
+        button {
+            background-color: #0466C8;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #023E7D;
+        }
+        .link {
+            margin-top: 15px;
+        }
+        .link a {
+            color: #0466C8;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .link a:hover {
+            text-decoration: underline;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-form">
+            <h2>Login to Your Account</h2>
+            <form action="#" method="post">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" name="email" required>
+                
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" name="password" required>
+                
+                <button type="submit">Login</button>
+            </form>
+            <div class="link">
+                <a href="#" onclick="showSignup()">Don't have an account? Register Now</a>
+            </div>
+        </div>
+        <div id="signup-form" class="hidden">
+            <h2>Register Now</h2>
+            <form action="#" method="post">
+                <label for="signup-name">Full Name</label>
+                <input type="text" id="signup-name" name="name" required>
+                
+                <label for="signup-email">Email</label>
+                <input type="email" id="signup-email" name="email" required>
+                
+                <label for="signup-password">Password</label>
+                <input type="password" id="signup-password" name="password" required>
+                
+                <label for="signup-confirm-password">Confirm Password</label>
+                <input type="password" id="signup-confirm-password" name="confirm-password" required>
+                
+                <button type="submit">Sign Up</button>
+            </form>
+            <div class="link">
+                <a href="#" onclick="showLogin()">Already have an account? Login</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        function showSignup() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('signup-form').classList.remove('hidden');
+        }
+        function showLogin() {
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
