@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -23,6 +22,7 @@
             margin: 0;
             font-family: Nunito, Arial, Helvetica, sans-serif;
             background: linear-gradient(135deg, var(--bg-start), var(--bg-mid));
+            
         }
 
         .wrap {
@@ -33,13 +33,13 @@
             padding: 28px
         }
 
-        /* larger split layout */
+        
         .card {
             background: transparent;
             width: 100%;
             max-width: 1000px;
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(2, 34, 71, 0.45);
+            box-shadow: 0 20px 60px rgb(53, 66, 84);
             overflow: hidden;
             display: flex;
             min-height: 520px
@@ -72,19 +72,18 @@
             border: 2px solid rgba(255, 255, 255, 0.12);
             color: #fff;
             padding: 10px 16px;
-            border-radius: 10px;
-            display: inline-block
+            border-radius: 20px;
+            
         }
 
         .right {
             flex: 1;
-            background: var(--card-bg);
             padding: 40px;
             display: flex;
             flex-direction: column;
-            justify-content: center
+            justify-content: center;
+            background: #ffffff
         }
-
         .form-title {
             color: var(--bg-mid);
             font-size: 1.4rem;
@@ -92,10 +91,10 @@
         }
 
         .form-sub {
-            color: var(--muted);
+            color: #7485a8;
             margin: 0 0 18px
         }
-
+        
         .tabs {
             display: flex;
             gap: 8px;
@@ -118,16 +117,17 @@
             color: #fff;
             border-color: transparent
         }
-
+        
         form {
             display: flex;
             flex-direction: column
         }
-
+        
         label {
             font-size: 0.9rem;
             color: var(--muted);
-            margin-top: 10px
+            margin-top: 10px;
+            
         }
 
         input {
@@ -161,12 +161,13 @@
             text-decoration: none
         }
 
-        /* compact centered form within the right panel */
+        
         .form-card {
             width: 100%;
             max-width: 380px;
             margin: 0 auto;
-            padding: 6px 2px
+            padding: 6px 2px;
+            background: #ffffff
         }
 
         .hidden {
@@ -207,14 +208,14 @@
                     <div class="form-sub">Sign in or create a free account to continue</div>
 
                     <div class="tabs" role="tablist">
-                        <div class="tab active" id="tab-login" role="tab" aria-selected="true">Login</div>
-                        <div class="tab" id="tab-signup" role="tab" aria-selected="false">Sign Up</div>
+                        <div class="tab active" id="tab-login" role="tab" >Login</div>
+                        <div class="tab" id="tab-signup" role="tab" >Sign Up</div>
                     </div>
 
-                    <div id="panel-login" role="tabpanel">
+                    <div id="login" role="tabpanel">
                         <form id="login-form" autocomplete="on">
                             <label for="login-email">Email</label>
-                            <input id="login-email" type="email" required placeholder="you@example.com">
+                            <input id="login-email" type="email" required placeholder="example@gmail.com">
                             <label for="login-password">Password</label>
                             <input id="login-password" type="password" required placeholder="Your password">
                             <button class="action" type="submit">Sign In</button>
@@ -222,12 +223,12 @@
                         <p class="small">Forgot password? <a href="#">Reset</a></p>
                     </div>
 
-                    <div id="panel-signup" role="tabpanel" class="hidden">
+                    <div id="signup" role="tabpanel" class="hidden">
                         <form id="signup-form" autocomplete="on">
                             <label for="signup-name">Full name</label>
-                            <input id="signup-name" type="text" required placeholder="Jane Doe">
+                            <input id="signup-name" type="text" required placeholder="John doe">
                             <label for="signup-email">Email</label>
-                            <input id="signup-email" type="email" required placeholder="you@example.com">
+                            <input id="signup-email" type="email" required placeholder="example@gmail.com">
                             <label for="signup-password">Password</label>
                             <input id="signup-password" type="password" required placeholder="Choose a password">
                             <button class="action" type="submit">Create Account</button>
@@ -243,8 +244,8 @@
         // Tab toggling
         const tabLogin = document.getElementById('tab-login');
         const tabSignup = document.getElementById('tab-signup');
-        const panelLogin = document.getElementById('panel-login');
-        const panelSignup = document.getElementById('panel-signup');
+        const panelLogin = document.getElementById('login');
+        const panelSignup = document.getElementById('signup');
 
         function showLogin() { tabLogin.classList.add('active'); tabSignup.classList.remove('active'); panelLogin.classList.remove('hidden'); panelSignup.classList.add('hidden'); }
         function showSignup() { tabSignup.classList.add('active'); tabLogin.classList.remove('active'); panelSignup.classList.remove('hidden'); panelLogin.classList.add('hidden'); }
