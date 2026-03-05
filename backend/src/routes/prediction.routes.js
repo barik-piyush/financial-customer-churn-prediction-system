@@ -6,6 +6,7 @@ import {
 
 import verifyToken from '../middleware/auth.middleware.js';
 import isAdmin from "../middleware/admin.middleware.js";
+import { uploadAndTrain } from '../controllers/prediction.controller.js';
 
 const router = express.Router();
 
@@ -29,6 +30,13 @@ router.get(
   verifyToken,  // must be logged in
   isAdmin,      // must be admin role
   getChurnDistribution
+);
+
+router.post(
+  '/upload-train',
+  verifyToken,
+  isAdmin,
+  uploadAndTrain
 );
 
 export default router;

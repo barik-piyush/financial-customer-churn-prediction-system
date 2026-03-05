@@ -4,8 +4,10 @@ import authRoutes from "./routes/auth.routes.js";
 import predictionRoutes from "./routes/prediction.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import userRoutes from "./routes/user.routes.js";
+
 import errorMiddleware from "./middleware/error.middleware.js";
 import { generalLimiter, authLimiter } from './middleware/rateLimiter.js';
+import mlRoutes from './routes/ml.routes.js';
 
 const app = express();
 
@@ -17,11 +19,13 @@ app.use(express.json());
 app.use(generalLimiter);          
 app.use('/api/auth', authLimiter); 
 
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/prediction", predictionRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/ml", mlRoutes);
 
 // Error handler
 app.use(errorMiddleware);

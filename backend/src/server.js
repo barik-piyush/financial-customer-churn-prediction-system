@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
+import { initModel } from "./ml/churnModel.js"; 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +16,13 @@ dotenv.config({ path: path.resolve(__dirname, '..', envFile) });
 console.log(`Loaded environment: ${envFile} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
 
 connectDB();
+
+// Initialize ML model (load from disk or train synthetic)
+initModel().then(() => {
+  console.log('✅ ML model initialized');
+}).catch(err => {
+  console.error('❌ Failed to initialize ML model:', err);
+});
 
 app.use(express.json());
 

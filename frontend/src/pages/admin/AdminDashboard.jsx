@@ -21,10 +21,15 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('overview'); // 'overview', 'users', 'analytics', 'logs', 'model', 'settings'
 
+  // Only logout on explicit user action
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
+
+  // Prevent logout on browser back navigation
+  // Remove any useEffect or logic that logs out on popstate or navigation
+  // (No such logic found here, so nothing to remove)
 
   // Navigation items
   const navItems = [

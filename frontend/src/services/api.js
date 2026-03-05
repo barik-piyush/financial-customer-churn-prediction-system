@@ -20,3 +20,34 @@ export const getChurnDistribution = () => API.get('/predictions/churn-distributi
 // Admin: approve a user (admin only)
 export const approveUser = (userId) => API.patch(`/admin/approve/${userId}`);
 export const predictSingleChurn = (customerData) => API.post('/predictions/single', customerData);
+
+
+// ADMIN ML APIs
+export const adminUploadDataset = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return API.post('/ml/admin/upload-dataset', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+
+export const adminTrainModel = (filename) =>
+  API.post('/ml/admin/train-model', { filename });
+
+export const adminBatchPredict = (filename) =>
+  API.post('/ml/admin/batch-predict', { filename });
+
+export const adminPredictionSummary = (filename) =>
+  API.post('/ml/admin/prediction-summary', { filename });
+
+// BANK ML APIs
+export const bankSinglePredict = (customerData) =>
+  API.post('/ml/prediction/single', customerData);
+
+export const bankBatchPredict = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return API.post('/ml/prediction/upload-csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};

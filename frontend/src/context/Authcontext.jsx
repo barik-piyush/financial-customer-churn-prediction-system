@@ -15,10 +15,16 @@ export const AuthProvider = ({ children }) => {
           const res = await getProfile();
           setUser(res.data.user);
         } catch (err) {
-          console.error('Session expired');
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
+          // Only log out on 401/403 errors
+          if (err?.response && (err.response.status === 401 || err.response.status === 403)) {
+            console.error('Session expired');
+            localStorage.removeItem('token');
+            setToken(null);
+            setUser(null);
+          } else {
+            // Network/backend error: keep token, just show loading or error UI
+            console.warn('Could not fetch profile, but token is kept.');
+          }
         }
       }
       setIsLoading(false);

@@ -1,4 +1,10 @@
 import React, { useState } from 'react';
+import {
+  adminUploadDataset,
+  adminTrainModel,
+  adminBatchPredict,
+  adminPredictionSummary
+} from '../../services/api';
 
 const colors = {
   primary: '#001845',
@@ -14,33 +20,92 @@ const colors = {
 };
 
 const ModelControl = () => {
-  const [training, setTraining] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+  const [datasetName, setDatasetName] = useState('');
+  const [training, setTraining] = useState(false);
+  const [trainMsg, setTrainMsg] = useState('');
+  const [batchResults, setBatchResults] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [summaryMsg, setSummaryMsg] = useState('');
+  // Add modelStatus state to fix ReferenceError
   const [modelStatus, setModelStatus] = useState({
-    version: 'v2.4.1',
-    lastTrained: '2024-02-15 03:00',
-    accuracy: '94.2%',
-    totalSamples: '15,234',
-    status: 'active'
+    version: 'v1.0.0',
+    lastTrained: '-',
+    accuracy: '-',
+    totalSamples: '-'
   });
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
+    setUploadMsg('');
+    setDatasetName('');
   };
 
-  const handleRetrain = () => {
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setUploadMsg('Please select a CSV file.');
+      return;
+    }
+    setUploading(true);
+    setUploadMsg('');
+    try {
+      const res = await adminUploadDataset(selectedFile);
+      setUploadMsg(res.data.message || 'Dataset uploaded!');
+      setDatasetName(res.data.file);
+    } catch (err) {
+      setUploadMsg(err.response?.data?.message || 'Upload failed.');
+    }
+    setUploading(false);
+  };
+
+  const handleTrain = async () => {
+    if (!datasetName) {
+      setTrainMsg('Please upload a dataset first.');
+      return;
+    }
     setTraining(true);
-    // Simulate training
-    setTimeout(() => {
-      setTraining(false);
-      setModelStatus({
-        ...modelStatus,
-        lastTrained: new Date().toLocaleString(),
-        version: 'v2.4.2',
-        accuracy: '94.5%'
-      });
-    }, 3000);
+    setTrainMsg('');
+    try {
+      const res = await adminTrainModel(datasetName);
+      setTrainMsg(res.data.message || 'Model trained!');
+    } catch (err) {
+      setTrainMsg(err.response?.data?.message || 'Training failed.');
+    }
+    setTraining(false);
+  };
+
+  const handleBatchPredict = async () => {
+    if (!datasetName) {
+      setSummaryMsg('Please upload a dataset first.');
+      return;
+    }
+    setSummaryMsg('');
+    try {
+      const res = await adminBatchPredict(datasetName);
+      setBatchResults(res.data.results || []);
+      setSummaryMsg('Batch prediction complete!');
+    } catch (err) {
+      setSummaryMsg(err.response?.data?.message || 'Batch prediction failed.');
+    }
+  };
+
+  const handleSummary = async () => {
+    if (!datasetName) {
+      setSummaryMsg('Please upload a dataset first.');
+      return;
+    }
+    setSummaryMsg('');
+    try {
+      const res = await adminPredictionSummary(datasetName);
+      setSummary(res.data.summary);
+      setBatchResults(res.data.results || []);
+      setSummaryMsg('Summary loaded!');
+    } catch (err) {
+      setSummaryMsg(err.response?.data?.message || 'Summary failed.');
+    }
   };
 
   return (
@@ -88,16 +153,61 @@ const ModelControl = () => {
         </div>
       </div>
 
+
       {/* Main Actions */}
       <div style={styles.actionsGrid}>
-        {/* Retrain Model Card */}
+
+        {/* Upload Dataset Card with Run Prediction */}
         <div style={styles.actionCard}>
-          <h3 style={styles.actionTitle}>Retrain Model</h3>
+          <h3 style={styles.actionTitle}>Upload Dataset</h3>
           <p style={styles.actionDesc}>
-            Update the model with the latest data to improve accuracy
+            Add new training data to improve model performance
+          </p>
+          <div style={styles.uploadArea}>
+            <input
+              type="file"
+              id="file-upload"
+              accept=".csv"
+              onChange={handleFileUpload}
+              style={styles.fileInput}
+            />
+            <label htmlFor="file-upload" style={styles.fileLabel}>
+              <span style={styles.uploadIcon}>📁</span>
+              {selectedFile ? selectedFile.name : 'Choose CSV file'}
+            </label>
+          </div>
+          {selectedFile && (
+            <button
+              style={styles.secondaryButton}
+              onClick={handleUpload}
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading...' : 'Upload Dataset'}
+            </button>
+          )}
+          <button
+            style={{ ...styles.secondaryButton, marginTop: 12 }}
+            onClick={handleBatchPredict}
+            disabled={uploading || !datasetName}
+          >
+            Run Prediction
+          </button>
+          {summaryMsg && (
+            <p style={{ color: summaryMsg.includes('complete') ? colors.success : colors.danger, marginTop: 8 }}>{summaryMsg}</p>
+          )}
+          {uploadMsg && (
+            <p style={{ color: uploadMsg.includes('success') || uploadMsg.includes('uploaded') ? colors.success : colors.danger, marginTop: 8 }}>{uploadMsg}</p>
+          )}
+        </div>
+
+        {/* Train Model Card */}
+        <div style={styles.actionCard}>
+          <h3 style={styles.actionTitle}>Train Model</h3>
+          <p style={styles.actionDesc}>
+            Train the RandomForest model on the uploaded dataset
           </p>
           <button
-            onClick={handleRetrain}
+            onClick={handleTrain}
             disabled={training}
             style={{
               ...styles.primaryButton,
@@ -111,40 +221,63 @@ const ModelControl = () => {
                 Training in progress...
               </span>
             ) : (
-              'Start Training'
+              'Train Model'
             )}
           </button>
+          {trainMsg && (
+            <p style={{ color: trainMsg.includes('trained') ? colors.success : colors.danger, marginTop: 8 }}>{trainMsg}</p>
+          )}
         </div>
 
-        {/* Upload Dataset Card */}
+
+        {/* (Batch Prediction Card removed, button moved above) */}
+
+        {/* Prediction Summary Card */}
         <div style={styles.actionCard}>
-          <h3 style={styles.actionTitle}>Upload Dataset</h3>
+          <h3 style={styles.actionTitle}>Prediction Summary</h3>
           <p style={styles.actionDesc}>
-            Add new training data to improve model performance
+            View churn statistics and distribution
           </p>
-          <div style={styles.uploadArea}>
-            <input
-              type="file"
-              id="file-upload"
-              accept=".csv,.json"
-              onChange={handleFileUpload}
-              style={styles.fileInput}
-            />
-            <label htmlFor="file-upload" style={styles.fileLabel}>
-              <span style={styles.uploadIcon}>📁</span>
-              {selectedFile ? selectedFile.name : 'Choose CSV or JSON file'}
-            </label>
-          </div>
-          {selectedFile && (
-            <button
-              style={styles.secondaryButton}
-              onClick={() => alert('Upload started')}
-            >
-              Upload File
-            </button>
+          <button
+            onClick={handleSummary}
+            style={styles.secondaryButton}
+          >
+            View Summary
+          </button>
+          {summary && (
+            <div style={{ marginTop: 12 }}>
+              <p>Total Customers: <b>{summary.total}</b></p>
+              <p>Likely to Churn: <b>{summary.churn}</b></p>
+              <p>Not Likely to Churn: <b>{summary.notChurn}</b></p>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Batch Prediction Results Table */}
+      {batchResults.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <h3 style={styles.metricsTitle}>Batch Prediction Results</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
+            <thead>
+              <tr style={{ background: colors.lightBg }}>
+                <th style={{ ...styles.tableHeader, color: colors.primary }}>Customer Name</th>
+                <th style={{ ...styles.tableHeader, color: colors.primary }}>Prediction</th>
+                <th style={{ ...styles.tableHeader, color: colors.primary }}>Probability</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchResults.map((row, idx) => (
+                <tr key={idx} style={{ background: idx % 2 === 0 ? colors.white : colors.lightBg }}>
+                  <td style={styles.tableCell}>{row.name}</td>
+                  <td style={styles.tableCell}>{row.prediction}</td>
+                  <td style={styles.tableCell}>{row.probability.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Model Metrics */}
       <div style={styles.metricsCard}>

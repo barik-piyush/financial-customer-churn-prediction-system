@@ -1,8 +1,44 @@
-import { predictChurn, getRiskLevel, initModel } from '../ml/churnModel.js';
 
-// Initialize model when server starts
-let modelInitialized = false;
-initModel().then(() => { modelInitialized = true; });
+import { predictChurn, getRiskLevel, initModel } from '../ml/churnModel.js';
+import csv from 'csv-parser';
+import multer from 'multer';
+import { trainWithRealData } from '../ml/churnModel.js';
+
+// Define multer upload instance
+const upload = multer({ dest: 'uploads/' });
+
+export const uploadAndTrain = [
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+      const features = [];
+      const labels = [];
+      const fs = await import('fs');
+      fs.createReadStream(req.file.path)
+        .pipe(csv())
+        .on('data', (row) => {
+          // Adjust these keys to match your CSV columns
+          features.push([
+            Number(row.tenure),
+            Number(row.monthlyCharges),
+            Number(row.contract),
+            Number(row.supportCalls)
+          ]);
+          labels.push(Number(row.churn));
+        })
+        .on('end', async () => {
+          await trainWithRealData(features, labels);
+          fs.unlinkSync(req.file.path); // Clean up
+          res.json({ success: true, message: 'Model retrained with uploaded data' });
+        });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+];
 
 // For a single customer prediction
 export const predictSingleChurn = async (req, res) => {
