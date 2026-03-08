@@ -275,6 +275,38 @@ const UploadDatasetSection = () => {
 export default function BankDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  // ===== STATES FOR DATASET PREDICTION =====
+
+const [file, setFile] = useState(null);
+const [bulkLoading, setBulkLoading] = useState(false);
+const [bulkError, setBulkError] = useState('');
+
+const [actualLabels, setActualLabels] = useState([]);
+const [metaRows, setMetaRows] = useState([]);
+
+const [pendingSession, setPendingSession] = useState(null);
+
+const [sessions, setSessions] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
+  } catch {
+    return [];
+  }
+});
+
+// default empty stats to avoid crash
+const zeroStats = {
+  barData: [],
+  pieData: [],
+  bins: [],
+  matrix: { TP: 0, TN: 0, FP: 0, FN: 0 },
+  rocData: []
+};
+
+// save sessions automatically
+useEffect(() => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
+}, [sessions]);
   const [activeSection, setActiveSection] = useState("overview");
   const [churnData, setChurnData] = useState([]);
   const [loading, setLoading] = useState(true);
