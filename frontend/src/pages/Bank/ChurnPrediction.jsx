@@ -10,7 +10,7 @@ const colors = {
 const ChurnPrediction = () => {
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Predictions</h2>
+      <h2 style={styles.title}>Prediction History</h2>
       <PredictionHistory />
     </div>
   );

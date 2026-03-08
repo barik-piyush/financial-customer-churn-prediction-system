@@ -26,11 +26,9 @@ export default function BankDashboard() {
   const [activeSection, setActiveSection] = useState("overview");
   const [churnData, setChurnData] = useState([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     if (!user) navigate("/login");
   }, [user, navigate]);
-
 
   useEffect(() => {
     const fetchChurnDistribution = async () => {
