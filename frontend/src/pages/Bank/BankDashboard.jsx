@@ -44,20 +44,6 @@ const getRiskLevel = (probability) => {
   return 'Low';
 };
 
-const getRiskBadgeStyle = (riskLevel) => {
-  const normalized = String(riskLevel || '').toLowerCase();
-
-  if (normalized === 'high') {
-    return { color: colors.danger, background: `${colors.danger}14` };
-  }
-
-  if (normalized === 'medium') {
-    return { color: '#b45309', background: '#fef3c7' };
-  }
-
-  return { color: colors.success, background: `${colors.success}14` };
-};
-
 const parseCsvActualLabels = async (selectedFile) => {
   try {
     const text = await selectedFile.text();
@@ -285,10 +271,7 @@ const UploadDatasetSection = () => {
 
           <div style={uploadStyles.resultCard}>
             <h4 style={uploadStyles.resultTitle}>Uploaded Dataset Predictions {sessionIndex === 0 ? '(Latest)' : ''}</h4>
-            <table style={uploadStyles.table}><thead><tr style={{ background: colors.lightBg }}><th style={uploadStyles.tableHeader}>Customer Name</th><th style={uploadStyles.tableHeader}>Prediction</th><th style={uploadStyles.tableHeader}>Probability</th><th style={uploadStyles.tableHeader}>Risk Level</th></tr></thead><tbody>{(session.results || []).map((row, idx) => {
-              const riskLevel = row.risk_level || getRiskLevel(row.probability);
-              return (<tr key={`${session.id}-${row.name}-${idx}`} style={{ background: idx % 2 === 0 ? colors.white : colors.lightBg }}><td style={uploadStyles.tableCell}>{row.name}</td><td style={uploadStyles.tableCell}>{row.prediction}</td><td style={uploadStyles.tableCell}>{Number(row.probability).toFixed(3)}</td><td style={uploadStyles.tableCell}><span style={{ ...uploadStyles.riskBadge, ...getRiskBadgeStyle(riskLevel) }}>{riskLevel}</span></td></tr>);
-            })}</tbody></table>
+            <table style={uploadStyles.table}><thead><tr style={{ background: colors.lightBg }}><th style={uploadStyles.tableHeader}>Customer Name</th><th style={uploadStyles.tableHeader}>Prediction</th><th style={uploadStyles.tableHeader}>Probability</th><th style={uploadStyles.tableHeader}>Risk Level</th></tr></thead><tbody>{(session.results || []).map((row, idx) => (<tr key={`${session.id}-${row.name}-${idx}`} style={{ background: idx % 2 === 0 ? colors.white : colors.lightBg }}><td style={uploadStyles.tableCell}>{row.name}</td><td style={uploadStyles.tableCell}>{row.prediction}</td><td style={uploadStyles.tableCell}>{Number(row.probability).toFixed(3)}</td><td style={uploadStyles.tableCell}>{row.risk_level || getRiskLevel(row.probability)}</td></tr>))}</tbody></table>
           </div>
         </div>
       ))}
