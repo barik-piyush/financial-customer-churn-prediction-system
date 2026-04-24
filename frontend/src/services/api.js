@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:2005/api',   
+  baseURL: 'http://localhost:2005/api',
 });
 
 API.interceptors.request.use((req) => {
@@ -17,7 +17,8 @@ export const login = (userData) => API.post('/auth/login', userData);
 export const getProfile = () => API.get('/auth/profile');
 export const getAllUsers = () => API.get('/auth/users');
 export const getChurnDistribution = () => API.get('/predictions/churn-distribution');
-// Admin: approve a user (admin only)
+
+// Admin APIs
 export const approveUser = (userId) => API.patch(`/admin/approve/${userId}`);
 export const getAdminAnalytics = (range = '7d') => API.get(`/admin/analytics?range=${range}`);
 export const getAdminLogs = (params = {}) => {
@@ -27,8 +28,20 @@ export const getAdminLogs = (params = {}) => {
   if (params.limit) searchParams.set('limit', String(params.limit));
   return API.get(`/admin/logs?${searchParams.toString()}`);
 };
-export const predictSingleChurn = (customerData) => API.post('/predictions/single', customerData);
 
+export const updateAdminProfile = (payload) => API.put('/admin/profile', payload);
+export const changeAdminPassword = (payload) => API.patch('/admin/change-password', payload);
+export const logoutAllDevices = () => API.post('/admin/logout-all');
+
+export const updateUserStatus = (userId, isActive) =>
+  API.patch(`/admin/users/${userId}/status`, { isActive });
+export const deleteUser = (userId) => API.delete(`/admin/users/${userId}`);
+export const resetUserPassword = (userId, newPassword) =>
+  API.patch(`/admin/users/${userId}/reset-password`, { newPassword });
+export const assignUserRole = (userId, accessRole) =>
+  API.patch(`/admin/users/${userId}/role`, { accessRole });
+
+export const predictSingleChurn = (customerData) => API.post('/predictions/single', customerData);
 
 // ADMIN ML APIs
 export const adminUploadDataset = (file) => {

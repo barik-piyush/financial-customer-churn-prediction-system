@@ -1,149 +1,173 @@
-import React, { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/auth-context";
-import Users from "./Users";               // 👈 Import Users component
-import Analytics from "./Analytics";       // 👈 Import Analytics
-import Logs from "./Logs";                 // 👈 Import Logs
-import ModelControl from "./ModelControl"; // 👈 Import ModelControl
-
-const colors = {
-  primary: '#001845',
-  secondary: '#023E7D',
-  accent: '#0466C8',
-  muted: '#5C677D',
-  white: '#ffffff',
-  lightBg: '#f8fafc',
-  border: '#e2e8f0'
-};
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/auth-context';
+import {
+  changeAdminPassword,
+  getAdminAnalytics,
+  logoutAllDevices,
+  updateAdminProfile,
+} from '../../services/api';
+import Users from './Users';
+import Analytics from './Analytics';
+import Logs from './Logs';
+import ModelControl from './ModelControl';
 
 const AdminDashboard = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUserProfile } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('overview'); // 'overview', 'users', 'analytics', 'logs', 'model', 'settings'
 
-  // Only logout on explicit user action
+  const [activeSection, setActiveSection] = useState('overview');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [overview, setOverview] = useState({ totalUsers: 0, totalPredictions: 0, avgConfidence: 0, pendingAdmins: 0 });
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [profileForm, setProfileForm] = useState({ name: '', email: '' });
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({ name: user.name || '', email: user.email || '' });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let timer;
+
+    const fetchOverview = async () => {
+      try {
+        const res = await getAdminAnalytics('24h');
+        setOverview(res.data.metrics || {});
+      } catch {
+        // silently ignore to keep UI responsive
+      }
+    };
+
+    fetchOverview();
+    timer = setInterval(fetchOverview, 10000); // real-time-ish polling
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const colors = useMemo(() => {
+    if (isDarkMode) {
+      return {
+        bg: '#0f172a', panel: '#111827', text: '#f8fafc', subText: '#94a3b8', accent: '#3b82f6', border: '#1f2937'
+      };
+    }
+
+    return {
+      bg: '#f1f5f9', panel: '#ffffff', text: '#0f172a', subText: '#64748b', accent: '#2563eb', border: '#e2e8f0'
+    };
+  }, [isDarkMode]);
+
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate('/login');
   };
 
-  // Prevent logout on browser back navigation
-  // Remove any useEffect or logic that logs out on popstate or navigation
-  // (No such logic found here, so nothing to remove)
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await updateAdminProfile(profileForm);
+      updateUserProfile({ name: res.data.user.name, email: res.data.user.email });
+      setSettingsMessage('Profile updated successfully.');
+    } catch (error) {
+      setSettingsMessage(error.response?.data?.message || 'Failed to update profile.');
+    }
+  };
 
-  // Navigation items
-  const navItems = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'users', label: 'Manage Users', icon: '👥' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
-    { id: 'model', label: 'Model Control', icon: '🤖' },
-    { id: 'logs', label: 'System Logs', icon: '📁' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
-  ];
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    try {
+      await changeAdminPassword(passwordForm);
+      setSettingsMessage('Password updated. Please login again.');
+      logout();
+      navigate('/login');
+    } catch (error) {
+      setSettingsMessage(error.response?.data?.message || 'Failed to change password.');
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    try {
+      await logoutAllDevices();
+      logout();
+      navigate('/login');
+    } catch (error) {
+      setSettingsMessage(error.response?.data?.message || 'Failed to logout from all devices.');
+    }
+  };
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.logo}>FCCPS Admin</div>
-        <div style={styles.userMenu}>
-          <span style={styles.userName}>{user?.name}</span>
-          <div style={styles.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
-          <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+    <div style={{ minHeight: '100vh', background: colors.bg, color: colors.text }}>
+      <header style={{ padding: 16, borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between' }}>
+        <strong>FCCPS Admin</strong>
+        <div>
+          <span style={{ marginRight: 12 }}>{user?.name}</span>
+          <button onClick={handleLogout}>Logout</button>
         </div>
       </header>
 
-      <div style={styles.mainLayout}>
-        {/* Sidebar */}
-        <aside style={styles.sidebar}>
-          {navItems.map(item => (
+      <div style={{ display: 'flex' }}>
+        <aside style={{ width: 230, borderRight: `1px solid ${colors.border}`, padding: 12 }}>
+          {['overview', 'users', 'analytics', 'model', 'logs', 'settings'].map((item) => (
             <button
-              key={item.id}
-              style={{
-                ...styles.navItem,
-                backgroundColor: activeSection === item.id ? colors.accent : 'transparent'
-              }}
-              onClick={() => setActiveSection(item.id)}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeSection === item.id ? colors.accent : 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeSection === item.id ? colors.accent : 'transparent'}
+              key={item}
+              onClick={() => setActiveSection(item)}
+              style={{ display: 'block', width: '100%', marginBottom: 8, padding: 10, background: activeSection === item ? colors.accent : 'transparent', color: activeSection === item ? '#fff' : colors.text, border: `1px solid ${colors.border}`, borderRadius: 8 }}
             >
-              <span style={styles.navIcon}>{item.icon}</span>
-              {item.label}
+              {item.toUpperCase()}
             </button>
           ))}
         </aside>
 
-        {/* Main Content */}
-        <main style={styles.content}>
+        <main style={{ flex: 1, padding: 20 }}>
           {activeSection === 'overview' && (
             <>
-              <h2 style={styles.pageTitle}>Dashboard Overview</h2>
-              <div style={styles.statsGrid}>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>👥</div>
-                  <div>
-                    <p style={styles.statLabel}>Total Users</p>
-                    <p style={styles.statValue}>124</p>
-                  </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>📊</div>
-                  <div>
-                    <p style={styles.statLabel}>Predictions</p>
-                    <p style={styles.statValue}>1,342</p>
-                  </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>🎯</div>
-                  <div>
-                    <p style={styles.statLabel}>Model Accuracy</p>
-                    <p style={styles.statValue}>94.2%</p>
-                  </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>⏳</div>
-                  <div>
-                    <p style={styles.statLabel}>Pending Admins</p>
-                    <p style={styles.statValue}>3</p>
-                  </div>
-                </div>
+              <h2>Dashboard Overview</h2>
+              <div style={{ marginBottom: 16 }}>
+                <button onClick={() => setIsDarkMode((prev) => !prev)}>
+                  Switch to {isDarkMode ? 'Light' : 'Dark'} Mode
+                </button>
               </div>
-
-              <div style={styles.sectionTitle}>Quick Actions</div>
-              <div style={styles.actionsGrid}>
-                <div style={styles.actionCard}>
-                  <h4 style={styles.actionTitle}>👥 Manage Bank Users</h4>
-                  <p style={styles.actionDesc}>Create, update or delete bank accounts</p>
-                  <button style={styles.actionBtn} onClick={() => setActiveSection('users')}>Go to Users</button>
-                </div>
-                <div style={styles.actionCard}>
-                  <h4 style={styles.actionTitle}>📊 View Analytics</h4>
-                  <p style={styles.actionDesc}>Check system usage and model performance</p>
-                  <button style={styles.actionBtn} onClick={() => setActiveSection('analytics')}>View Reports</button>
-                </div>
-                <div style={styles.actionCard}>
-                  <h4 style={styles.actionTitle}>🤖 Retrain Model</h4>
-                  <p style={styles.actionDesc}>Update prediction model with new data</p>
-                  <button style={styles.actionBtn} onClick={() => setActiveSection('model')}>Start Training</button>
-                </div>
-                <div style={styles.actionCard}>
-                  <h4 style={styles.actionTitle}>📁 System Logs</h4>
-                  <p style={styles.actionDesc}>Monitor admin activities and errors</p>
-                  <button style={styles.actionBtn} onClick={() => setActiveSection('logs')}>View Logs</button>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))', gap: 12 }}>
+                <Card title="Total Users" value={overview.totalUsers} colors={colors} />
+                <Card title="Predictions" value={overview.totalPredictions} colors={colors} />
+                <Card title="Avg Confidence" value={`${overview.avgConfidence || 0}%`} colors={colors} />
+                <Card title="Pending Admin Requests" value={overview.pendingAdmins} colors={colors} />
               </div>
+              <small style={{ color: colors.subText }}>Pending Admin Requests updates every 10 seconds from backend analytics.</small>
             </>
           )}
 
-          {/* Render the corresponding component based on activeSection */}
           {activeSection === 'users' && <Users />}
           {activeSection === 'analytics' && <Analytics />}
           {activeSection === 'logs' && <Logs />}
           {activeSection === 'model' && <ModelControl />}
+
           {activeSection === 'settings' && (
-            <div style={styles.placeholder}>
-              <h2>Settings</h2>
-              <p>This section is under construction.</p>
+            <div>
+              <h2>Admin Settings</h2>
+              {settingsMessage && <p>{settingsMessage}</p>}
+
+              <form onSubmit={handleProfileUpdate} style={panelStyle(colors)}>
+                <h3>Update Admin Profile</h3>
+                <input placeholder="Name" value={profileForm.name} onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))} />
+                <input placeholder="Email" type="email" value={profileForm.email} onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))} style={{ marginLeft: 8 }} />
+                <button type="submit" style={{ marginLeft: 8 }}>Update Profile</button>
+              </form>
+
+              <form onSubmit={handlePasswordChange} style={panelStyle(colors)}>
+                <h3>Change Password</h3>
+                <input placeholder="Current Password" type="password" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))} />
+                <input placeholder="New Password" type="password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))} style={{ marginLeft: 8 }} />
+                <button type="submit" style={{ marginLeft: 8 }}>Change Password</button>
+              </form>
+
+              <div style={panelStyle(colors)}>
+                <h3>Session Management</h3>
+                <p>Logout from all devices.</p>
+                <button onClick={handleLogoutAll}>Logout All Devices</button>
+              </div>
             </div>
           )}
         </main>
@@ -152,191 +176,19 @@ const AdminDashboard = () => {
   );
 };
 
-// Styles (same as before, but we might need to ensure placeholder styling exists)
-const styles = {
-  container: {
-    minHeight: '100vh',
-    background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  header: {
-    background: colors.primary,
-    color: colors.white,
-    padding: '16px 32px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-  },
-  logo: {
-    fontSize: '1.8rem',
-    fontWeight: 700,
-    letterSpacing: '0.5px',
-  },
-  userMenu: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-  },
-  userName: {
-    fontSize: '1rem',
-    fontWeight: 500,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: '50%',
-    background: colors.accent,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1.2rem',
-    fontWeight: 600,
-    color: colors.white,
-  },
-  logoutBtn: {
-    padding: '8px 16px',
-    background: 'rgba(255,255,255,0.15)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    borderRadius: 6,
-    color: colors.white,
-    cursor: 'pointer',
-    fontWeight: 600,
-    transition: '0.2s',
-  },
-  mainLayout: {
-    display: 'flex',
-    flex: 1,
-  },
-  sidebar: {
-    width: 260,
-    background: colors.secondary,
-    padding: '24px 0',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.1)',
-  },
-  navItem: {
-    padding: '12px 24px',
-    border: 'none',
-    background: 'transparent',
-    color: colors.white,
-    fontSize: '1rem',
-    textAlign: 'left',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    transition: '0.2s',
-    borderLeft: '4px solid transparent',
-  },
-  navIcon: {
-    fontSize: '1.3rem',
-    width: 28,
-  },
-  content: {
-    flex: 1,
-    padding: '32px',
-    background: '#f1f5f9',
-    overflowY: 'auto',
-  },
-  pageTitle: {
-    fontSize: '2rem',
-    fontWeight: 700,
-    color: colors.primary,
-    marginBottom: '24px',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '20px',
-    marginBottom: '40px',
-  },
-  statCard: {
-    background: colors.white,
-    borderRadius: 12,
-    padding: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-    border: `1px solid ${colors.border}`,
-  },
-  statIcon: {
-    fontSize: '2.5rem',
-    width: 60,
-    height: 60,
-    borderRadius: '50%',
-    background: `linear-gradient(135deg, ${colors.accent}20, ${colors.accent}10)`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    fontSize: '0.85rem',
-    color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    marginBottom: '4px',
-  },
-  statValue: {
-    fontSize: '2rem',
-    fontWeight: 700,
-    color: colors.primary,
-    margin: 0,
-  },
-  sectionTitle: {
-    fontSize: '1.5rem',
-    fontWeight: 600,
-    color: colors.primary,
-    marginBottom: '20px',
-  },
-  actionsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '20px',
-  },
-  actionCard: {
-    background: colors.white,
-    borderRadius: 12,
-    padding: '24px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-    border: `1px solid ${colors.border}`,
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  actionTitle: {
-    fontSize: '1.2rem',
-    fontWeight: 600,
-    color: colors.primary,
-    marginBottom: '8px',
-  },
-  actionDesc: {
-    fontSize: '0.9rem',
-    color: colors.muted,
-    marginBottom: '16px',
-    lineHeight: 1.5,
-  },
-  actionBtn: {
-    padding: '8px 16px',
-    background: colors.accent,
-    color: colors.white,
-    border: 'none',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontWeight: 600,
-    transition: '0.2s',
-  },
-  placeholder: {
-    background: colors.white,
-    borderRadius: 12,
-    padding: '48px',
-    textAlign: 'center',
-    color: colors.muted,
-    border: `1px solid ${colors.border}`,
-  }
-};
+const panelStyle = (colors) => ({
+  background: colors.panel,
+  border: `1px solid ${colors.border}`,
+  borderRadius: 8,
+  padding: 12,
+  marginBottom: 12,
+});
+
+const Card = ({ title, value, colors }) => (
+  <div style={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 14 }}>
+    <div style={{ color: colors.subText, fontSize: 13 }}>{title}</div>
+    <div style={{ fontSize: 24, fontWeight: 700 }}>{value ?? 0}</div>
+  </div>
+);
 
 export default AdminDashboard;

@@ -1,18 +1,32 @@
 import express from "express";
-import { approveUser, getAnalytics, getLogs } from "../controllers/admin.controller.js";
+import {
+  approveUser,
+  assignUserRole,
+  changeAdminPassword,
+  deleteUserById,
+  getAnalytics,
+  getLogs,
+  logoutAllDevices,
+  resetUserPassword,
+  updateAdminProfile,
+  updateUserStatus,
+} from "../controllers/admin.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 import isAdmin from "../middleware/admin.middleware.js";
 
-// ✅ 1. Create router instance
 const router = express.Router();
 
-// ✅ 2. Define routes
 router.patch("/approve/:userId", protect, isAdmin, approveUser);
 router.get("/analytics", protect, isAdmin, getAnalytics);
 router.get("/logs", protect, isAdmin, getLogs);
 
-// Add any other admin routes here
-// router.get("/dashboard", protect, isAdmin, adminDashboard);
+router.put("/profile", protect, isAdmin, updateAdminProfile);
+router.patch("/change-password", protect, isAdmin, changeAdminPassword);
+router.post("/logout-all", protect, isAdmin, logoutAllDevices);
 
-// ✅ 3. Export router
+router.patch("/users/:userId/status", protect, isAdmin, updateUserStatus);
+router.delete("/users/:userId", protect, isAdmin, deleteUserById);
+router.patch("/users/:userId/reset-password", protect, isAdmin, resetUserPassword);
+router.patch("/users/:userId/role", protect, isAdmin, assignUserRole);
+
 export default router;

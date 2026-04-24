@@ -3,6 +3,7 @@ import Prediction from "../models/Prediction.model.js";
 import Log from "../models/Log.model.js";
 import fs from "fs";
 import path from "path";
+import bcrypt from "bcryptjs";
 import { fileURLToPath } from "url";
 import { logEvent } from "../utils/logger.js";
 
@@ -81,13 +82,146 @@ export const approveUser = async (req, res) => {
   }
 };
 
+export const changeAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "Provide currentPassword and newPassword (min 6 chars)." });
+    }
+
+    const admin = await User.findById(req.user.id);
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Current password is incorrect." });
+    }
+
+    admin.password = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+    admin.tokenVersion += 1;
+    await admin.save();
+
+    res.json({ success: true, message: "Password changed successfully. Please login again." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateAdminProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ success: false, message: "Name and email are required." });
+    }
+
+    const emailInUse = await User.findOne({ email, _id: { $ne: req.user.id } });
+    if (emailInUse) {
+      return res.status(400).json({ success: false, message: "Email already in use." });
+    }
+
+    const admin = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, email },
+      { new: true }
+    ).select("-password");
+
+    res.json({ success: true, message: "Profile updated", user: admin });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const logoutAllDevices = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { $inc: { tokenVersion: 1 } });
+    res.json({ success: true, message: "All sessions terminated. Please login again." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isActive } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { isActive: Boolean(isActive) },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, message: `User ${user.isActive ? "activated" : "deactivated"} successfully.`, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (String(req.user.id) === String(userId)) {
+      return res.status(400).json({ success: false, message: "You cannot delete your own account." });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.json({ success: true, message: "User deleted successfully." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const resetUserPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword = "Temp@123456" } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { password: hashedPassword, $inc: { tokenVersion: 1 } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.json({ success: true, message: "Password reset successfully.", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const assignUserRole = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { accessRole } = req.body;
+    const allowed = ["Admin", "Analyst", "Viewer"];
+
+    if (!allowed.includes(accessRole)) {
+      return res.status(400).json({ success: false, message: "Invalid accessRole." });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, { accessRole }, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.json({ success: true, message: "User role assigned successfully.", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const getAnalytics = async (req, res) => {
   try {
     const range = req.query.range || "7d";
     const from = getRangeStart(range);
     const match = { createdAt: { $gte: from } };
 
-    const [totalUsers, totalPredictions, highRiskCustomers, avgProbabilityAgg, riskAgg, topChurnersRaw] = await Promise.all([
+    const [totalUsers, totalPredictions, highRiskCustomers, avgProbabilityAgg, riskAgg, topChurnersRaw, pendingAdmins] = await Promise.all([
       User.countDocuments({}),
       Prediction.countDocuments(match),
       Prediction.countDocuments({ ...match, risk: "High" }),
@@ -104,6 +238,7 @@ export const getAnalytics = async (req, res) => {
         .limit(5)
         .select("customerName risk probability source createdAt")
         .lean(),
+      User.countDocuments({ role: "admin", approved: false }),
     ]);
 
     const format = range === "24h" ? "%H:00" : "%m-%d";
@@ -157,6 +292,7 @@ export const getAnalytics = async (req, res) => {
         totalUsers,
         totalPredictions,
         highRiskCustomers,
+        pendingAdmins,
         avgProbability: Number((avgProbability * 100).toFixed(1)),
         avgConfidence: Number((avgConfidence * 100).toFixed(1)),
         modelVersion: "rf_model.joblib",

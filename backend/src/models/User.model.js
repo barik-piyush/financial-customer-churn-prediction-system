@@ -17,15 +17,30 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['bank', 'admin'],
-      default: 'bank',
+      enum: ["bank", "admin"],
+      default: "bank",
+    },
+    accessRole: {
+      type: String,
+      enum: ["Admin", "Analyst", "Viewer"],
+      default: function () {
+        return this.role === "admin" ? "Admin" : "Viewer";
+      },
     },
     approved: {
       type: Boolean,
-      default: function() {
+      default: function () {
         // Auto‑approve banks, admins need approval
-        return this.role === 'bank';
-      }
+        return this.role === "bank";
+      },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

@@ -24,7 +24,9 @@ export const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      accessRole: role === 'admin' ? 'Admin' : 'Viewer',
       approved: role === 'bank', // banks auto-approved, admins pending
+      isActive: true,
     });
 
     res.status(201).json({
@@ -37,7 +39,9 @@ export const registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        accessRole: user.accessRole,
         approved: user.approved,
+        isActive: user.isActive,
       },
     });
   } catch (error) {
@@ -64,6 +68,13 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been deactivated by administrator.",
       });
     }
 
@@ -101,7 +112,9 @@ export const loginUser = async (req, res) => {
         id: user._id,
         email: user.email,
         role: user.role,
+        accessRole: user.accessRole,
         approved: user.approved,
+        tokenVersion: user.tokenVersion,
       },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
@@ -116,7 +129,9 @@ export const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        accessRole: user.accessRole,
         approved: user.approved,
+        isActive: user.isActive,
       },
     });
     logEvent({
