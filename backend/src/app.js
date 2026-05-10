@@ -9,6 +9,7 @@ import helmet from "helmet"; // Security headers
 import cors from "cors"; // CORS protection for frontend-backend communication
 
 import mlRoutes from './routes/ml.routes.js'; // ML model routes
+import settingsRoutes from './routes/settings.routes.js'; // Admin settings routes
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/predictions", predictionRoutes);
 app.use("/api/prediction", predictionRoutes); // backward compatibility
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/settings", settingsRoutes);
 app.use("/api/ml", mlRoutes);
 
 // Error handler
