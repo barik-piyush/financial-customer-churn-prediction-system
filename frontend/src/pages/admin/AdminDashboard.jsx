@@ -1,6 +1,7 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/auth-context";
+import { getAdminAnalytics, getAdminModelStatus, getAllUsers } from "../../services/api";
 import Users from "./Users";               // 👈 Import Users component
 import Analytics from "./Analytics";       // 👈 Import Analytics
 import Logs from "./Logs";                 // 👈 Import Logs
@@ -17,10 +18,75 @@ const colors = {
   border: '#e2e8f0'
 };
 
+const numberFormatter = new Intl.NumberFormat('en-US');
+
+const emptyOverviewMetrics = {
+  totalUsers: 0,
+  totalPredictions: 0,
+  modelAccuracy: null,
+  pendingAdmins: 0,
+  updatedAt: null
+};
+
+const formatCount = (value) => numberFormatter.format(Number(value) || 0);
+const formatAccuracy = (value) => Number.isFinite(value) ? `${value.toFixed(1)}%` : 'N/A';
+
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('overview'); // 'overview', 'users', 'analytics', 'logs', 'model', 'settings'
+  const [overviewMetrics, setOverviewMetrics] = useState(emptyOverviewMetrics);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState('');
+
+  useEffect(() => {
+    if (activeSection !== 'overview') return undefined;
+
+    let isMounted = true;
+
+    const loadOverviewMetrics = async () => {
+      if (isMounted) setOverviewError('');
+
+      const [usersResult, analyticsResult, modelResult] = await Promise.allSettled([
+        getAllUsers(),
+        getAdminAnalytics('90d'),
+        getAdminModelStatus()
+      ]);
+
+      if (!isMounted) return;
+
+      const usersPayload = usersResult.status === 'fulfilled' ? usersResult.value.data : null;
+      const users = Array.isArray(usersPayload?.users) ? usersPayload.users : [];
+      const analyticsMetrics = analyticsResult.status === 'fulfilled'
+        ? analyticsResult.value.data?.metrics
+        : null;
+      const modelStatus = modelResult.status === 'fulfilled'
+        ? modelResult.value.data?.status
+        : null;
+
+      setOverviewMetrics({
+        totalUsers: usersPayload?.count ?? (usersPayload ? users.length : analyticsMetrics?.totalUsers ?? 0),
+        totalPredictions: modelStatus?.metadata?.totalPredictions ?? analyticsMetrics?.totalPredictions ?? 0,
+        modelAccuracy: Number.isFinite(modelStatus?.accuracy) ? modelStatus.accuracy : null,
+        pendingAdmins: users.filter((item) => item.role === 'admin' && !item.approved).length,
+        updatedAt: new Date()
+      });
+
+      if ([usersResult, analyticsResult, modelResult].every((result) => result.status === 'rejected')) {
+        setOverviewError('Could not refresh live overview metrics.');
+      }
+
+      setOverviewLoading(false);
+    };
+
+    loadOverviewMetrics();
+    const timer = setInterval(loadOverviewMetrics, 15000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [activeSection]);
 
   // Only logout on explicit user action
   const handleLogout = () => {
@@ -40,6 +106,33 @@ const AdminDashboard = () => {
     { id: 'model', label: 'Model Control', icon: '🤖' },
     { id: 'logs', label: 'System Logs', icon: '📁' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
+  ];
+
+  const overviewCards = [
+    {
+      label: 'Total Users',
+      value: formatCount(overviewMetrics.totalUsers),
+      icon: '👥',
+      note: 'Registered accounts'
+    },
+    {
+      label: 'Predictions',
+      value: formatCount(overviewMetrics.totalPredictions),
+      icon: '📊',
+      note: 'Stored prediction records'
+    },
+    {
+      label: 'Model Accuracy',
+      value: formatAccuracy(overviewMetrics.modelAccuracy),
+      icon: '🎯',
+      note: overviewMetrics.modelAccuracy === null ? 'Model not trained yet' : 'Latest trained model'
+    },
+    {
+      label: 'Pending Admins',
+      value: formatCount(overviewMetrics.pendingAdmins),
+      icon: '⏳',
+      note: 'Awaiting approval'
+    }
   ];
 
   return (
@@ -78,36 +171,26 @@ const AdminDashboard = () => {
         <main style={styles.content}>
           {activeSection === 'overview' && (
             <>
-              <h2 style={styles.pageTitle}>Dashboard Overview</h2>
+              <div style={styles.pageHeader}>
+                <h2 style={styles.pageTitle}>Dashboard Overview</h2>
+                <p style={styles.pageSubtitle}>
+                  {overviewMetrics.updatedAt
+                    ? `Live metrics refreshed at ${overviewMetrics.updatedAt.toLocaleTimeString()}`
+                    : 'Loading live metrics...'}
+                </p>
+              </div>
+              {overviewError && <div style={styles.errorBanner}>{overviewError}</div>}
               <div style={styles.statsGrid}>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>👥</div>
-                  <div>
-                    <p style={styles.statLabel}>Total Users</p>
-                    <p style={styles.statValue}>124</p>
+                {overviewCards.map((card) => (
+                  <div key={card.label} style={styles.statCard}>
+                    <div style={styles.statIcon}>{card.icon}</div>
+                    <div>
+                      <p style={styles.statLabel}>{card.label}</p>
+                      <p style={styles.statValue}>{overviewLoading ? '...' : card.value}</p>
+                      <p style={styles.statNote}>{card.note}</p>
+                    </div>
                   </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>📊</div>
-                  <div>
-                    <p style={styles.statLabel}>Predictions</p>
-                    <p style={styles.statValue}>1,342</p>
-                  </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>🎯</div>
-                  <div>
-                    <p style={styles.statLabel}>Model Accuracy</p>
-                    <p style={styles.statValue}>94.2%</p>
-                  </div>
-                </div>
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>⏳</div>
-                  <div>
-                    <p style={styles.statLabel}>Pending Admins</p>
-                    <p style={styles.statValue}>3</p>
-                  </div>
-                </div>
+                ))}
               </div>
 
               <div style={styles.sectionTitle}>Quick Actions</div>
@@ -243,7 +326,25 @@ const styles = {
     fontSize: '2rem',
     fontWeight: 700,
     color: colors.primary,
+    margin: 0,
+  },
+  pageHeader: {
     marginBottom: '24px',
+  },
+  pageSubtitle: {
+    marginTop: '8px',
+    marginBottom: 0,
+    fontSize: '0.95rem',
+    color: colors.muted,
+  },
+  errorBanner: {
+    marginBottom: '16px',
+    padding: '10px 12px',
+    background: '#fee2e2',
+    border: '1px solid #fecaca',
+    borderRadius: 8,
+    color: '#b91c1c',
+    fontSize: '0.9rem',
   },
   statsGrid: {
     display: 'grid',
@@ -283,6 +384,12 @@ const styles = {
     fontWeight: 700,
     color: colors.primary,
     margin: 0,
+  },
+  statNote: {
+    marginTop: '4px',
+    marginBottom: 0,
+    fontSize: '0.8rem',
+    color: colors.muted,
   },
   sectionTitle: {
     fontSize: '1.5rem',
